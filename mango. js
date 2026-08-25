@@ -1,75 +1,32 @@
-// 🥭 MANGO AI - Super WhatsApp Bot by Joseph
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
+const { Boom } = require('@hapi/boom')
 
-console.log('🥭 Mango AI starting...');
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info')
+    const sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true
+    })
 
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-    }
-});
+    sock.ev.on('creds.update', saveCreds)
 
-client.on('qr', (qr) => {
-    console.log('=== SCAN THIS QR IN WHATSAPP ===');
-    qrcode.generate(qr, {small: true});
-});
-
-client.on('ready', () => {
-    console.log('✅ Mango AI is Ready! 🥭');
-});
-
-client.on('message', async msg => {
-    const body = msg.body.toLowerCase();
-    const chat = await msg.getChat();
-    
-    // Don't reply to groups if you don't want - remove this if you want group bot
-    // if(chat.isGroup) return;
-
-    console.log(`Message from ${msg.from}: ${msg.body}`);
-
-    // Commands
-    if(body === 'hi' || body === 'hello' || body === 'hey') {
-        return msg.reply('Hey! 🥭 Kei chu *Mango AI* ka ni! Eng nge ka tih sak ang che?\n\nCommands:\n• *mango* - ka chanchin\n• *help* - tanpuina\n• *ping* - ka dam em?\n• I zawhna zawng zawng min zawt rawh!');
-    }
-    
-    if(body === 'help' || body === 'tanpui') {
-        return msg.reply(`🥭 *MANGO AI HELP* 🥭\n\n1. *hi/hello* - Min be rawh\n2. *mango* - Ka chanchin\n3. *ping* - Check\n4. *sticker* - Thlalak sticker ah ka chantir ang (caption ah sticker tih ziak la)\n5. Engkim min zawt rawh - ka chhang ang che!\n\nBy Joseph ❤️`);
-    }
-
-    if(body === 'ping') {
-        return msg.reply('Pong! 🏓 Mango AI ka dam e! 100% Online 🥭');
-    }
-
-    if(body.includes('mango')) {
-        return msg.reply('🥭 *Mango AI* ka ni! AI fing tak ka ni - Mizo tawng pawh ka thiam! Eng nge i duh?');
-    }
-
-    if(body.includes('i hming') || body.includes('who are you')) {
-        return msg.reply('Kei chu *Mango AI* ka ni 🥭 Joseph-a siam ka ni! I tanpuitu tur!');
-    }
-
-    if(body === 'sticker' || body.includes('sticker')) {
-        if(msg.hasMedia) {
-            const media = await msg.downloadMedia();
-            client.sendMessage(msg.from, media, {sendMediaAsSticker: true});
-        } else {
-            msg.reply('Thlalak nen *sticker* tih rawn thawn rawh! 🥭');
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update
+        if(connection === 'close') {
+            const shouldReconnect = (lastDisconnect.error instanceof Boom)?.output?.statusCode!== DisconnectReason.loggedOut
+            if(shouldReconnect) startBot()
+        } else if(connection === 'open') {
+            console.log('Bot connected!')
         }
-        return;
-    }
+    })
 
-    // Auto AI Reply - Simple Smart Replies
-    if(body.includes('eng') || body.includes('what') || body.includes('?')) {
-        return msg.reply(`I zawhna tha tak a ni! 🤔 "${msg.body}" tih chungchang ah chuan...\n\nKei *Mango AI* chuan ka hria - mahse ka la zir mek! A chipchiar zawk in min zawt leh rawh le! 🥭`);
-    }
-
-    // Default friendly reply
-    if(chat.isGroup === false) {
-        // Only auto-reply in private
-        // msg.reply('Hmm... 🤔'); // comment out if too spammy
-    }
-});
-
-client.initialize();
+    sock.ev.on('messages.upsert', async m => {
+        const msg = m.messages[0]
+        if(!msg.message || msg.key.fromMe) return
+        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ""
+        if(text.toLowerCase() === 'hi' || text.toLowerCase() === 'hello') {
+            await sock.sendMessage(msg.key.remoteJid, { text: 'Hello! Mango Bot online 🥭' })
+        }
+    })
+}
+startBot()
