@@ -1,0 +1,27 @@
+// MANGO AI - WhatsApp Bot
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+
+const client = new Client({
+    authStrategy: new LocalAuth()
+});
+
+client.on('qr', (qr) => {
+    console.log('QR RECEIVED - Scan rawh:');
+    qrcode.generate(qr, {small: true});
+});
+
+client.on('ready', () => {
+    console.log('Mango AI is ready!');
+});
+
+client.on('message', async msg => {
+    if(msg.body.toLowerCase() === 'hi' || msg.body.toLowerCase() === 'hello') {
+        msg.reply('Hello! Kei chu Mango AI ka ni 🥭 Eng nge ka tih sak ang che?');
+    }
+    else if(msg.body.toLowerCase().includes('mango')) {
+        msg.reply('Mango AI ka ni e! Eng nge i duh? 🥭');
+    }
+});
+
+client.initialize();
