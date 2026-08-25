@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "mango.js",
   "dependencies": {
-    "whatsapp-web.js": "^1.23.0",
+    "@whiskeysockets/baileys": "^6.7.0",
+    "@hapi/boom": "^10.0.1",
     "qrcode-terminal": "^0.12.0"
   }
 }
